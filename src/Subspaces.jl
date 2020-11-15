@@ -1,13 +1,16 @@
 module Subspaces
 
 import Base.hcat, Base.vcat, Base.hvcat, Base.cat, Base.+, Base.*, Base.kron, Base.show, Base.iterate, Base.==, Base.in, Base.adjoint
-import Base.|, Base.&, Base.~
+import Base.|, Base.&, Base.~, Base./, Base.⊆
 using LinearAlgebra
+using Convex
 
 export Subspace, shape, dim, each_basis_element
 export random_subspace, random_hermitian_subspace, empty_subspace, full_subspace
 export tobasis, frombasis, random_element, projection, perp
 export hermitian_basis
+export variable_in_space
+export ⟂
 
 struct Subspace{T, N}
     basis::AbstractArray
@@ -152,6 +155,26 @@ end
 kron(a::Subspace, b::AbstractArray) = kron(a, Subspace([b]))
 kron(a::AbstractArray, b::Subspace) = kron(Subspace([a]), b)
 
+function (/)(a::Subspace, b::Subspace)
+    if !(b in a)
+        throw(ArgumentError("divisor must be a subspace of dividend for subspace quotient"))
+    end
+    return perp(perp(a) + b)
+end
+
+(/)(a::Subspace, b::AbstractArray) = a / Subspace([b])
+
+(/)(ss::Subspace{T, 2}, x::UniformScaling) where T = ss / Array{T}(I, shape(ss))
+
+(⊆)(a::Subspace      , b::Subspace) = a in b
+(⊆)(a::AbstractArray , b::Subspace) = a in b
+(⊆)(a::UniformScaling, b::Subspace) = a in b
+(⊇)(a::Subspace, b::Subspace      ) = b in a
+(⊇)(a::Subspace, b::AbstractArray ) = b in a
+(⊇)(a::Subspace, b::UniformScaling) = b in a
+
+(⟂)(a::Subspace, b::Subspace) = a ⊆ perp(b)
+
 ################
 ### Math
 ################
@@ -159,7 +182,7 @@ kron(a::AbstractArray, b::Subspace) = kron(Subspace([a]), b)
 function tobasis(ss::Subspace{<:Number, N}, x::AbstractArray{<:Number, N}) where N
     shp = shape(ss)
     basis_mat = reshape(ss.basis, prod(shp), dim(ss))
-    return basis_mat' * reshape(x, prod(shp))
+    return basis_mat' * vec(x)
 end
 
 function frombasis(ss::Subspace, x::AbstractArray{<:Number, 1})
@@ -254,6 +277,46 @@ function hermitian_basis(ss::Subspace{Complex{T}}) where T
     hb = [ vec_to_hermit(x, n) for x in each_basis_element(Subspace(M)) ]
     @assert (Subspace(hb) == ss) "Hermitian basis didn't equal original space"
     return hb
+end
+
+#########################
+### Support for Convex.jl
+#########################
+
+function tobasis(ss::Subspace{<:Number, N}, x::Convex.AbstractExpr) where N
+    shp = shape(ss)
+    basis_mat = reshape(ss.basis, prod(shp), dim(ss))
+    return basis_mat' * vec(x)
+end
+
+function frombasis(ss::Subspace{<:Number, 1}, x::Convex.AbstractExpr)
+    shp = shape(ss)
+    basis_mat = reshape(ss.basis, prod(shp), dim(ss))
+    return basis_mat * x
+end
+
+function frombasis(ss::Subspace{<:Number, 2}, x::Convex.AbstractExpr)
+    shp = shape(ss)
+    basis_mat = reshape(ss.basis, prod(shp), dim(ss))
+    return reshape(basis_mat * x, shp...)
+end
+
+function projection(ss::Subspace{<:Number, N}, x::Convex.AbstractExpr) where N
+    return frombasis(ss, tobasis(ss, x))
+end
+
+function in(x::Convex.AbstractExpr, ss::Subspace{<:Number, N}) where N
+    return tobasis(perp(ss), x) == 0
+end
+
+function variable_in_space(ss::Subspace{<:Complex{<:Real}, N}) where N
+    x = Convex.ComplexVariable(dim(ss))
+    return frombasis(ss, x)
+end
+
+function variable_in_space(ss::Subspace{<:Real, N}) where N
+    x = Convex.Variable(dim(ss))
+    return frombasis(ss, x)
 end
 
 end # module

@@ -1,5 +1,7 @@
 module Subspaces
 
+# FIXME many methods don't work well with empty subspaces
+
 import Base.hcat, Base.vcat, Base.hvcat, Base.cat, Base.+, Base.*, Base.kron, Base.show, Base.iterate, Base.==, Base.in, Base.adjoint
 import Base.|, Base.&, Base.~, Base./, Base.⊆
 using LinearAlgebra
@@ -74,10 +76,10 @@ end
 *(a::Subspace, b::Subspace) =
     Subspace([ x*y for x in each_basis_element(a) for y in each_basis_element(b) ])
 
-function kron(a::Subspace, b::Subspace)
+function kron(a::Subspace{T,N}, b::Subspace{U,N}) where {T,U,N}
     if dim(a) == 0 || dim(b) == 0
         return Subspace([
-            kron(zeros(shape(a)), zeros(shape(b))) ])
+            kron(zeros(T, shape(a)), zeros(U, shape(b))) ])
     else
         return Subspace([
             kron(x, y)
@@ -100,13 +102,18 @@ function cat(ss::Subspace...; dims)
     ])
 end
 
-function hvcat(rows::Tuple{Vararg{Int}}, ss::Subspace...)
+function hvcat(rows::Tuple{Vararg{Int}}, ss::Subspace{T, N}...) where {T, N}
     n = length(ss)
-    Subspace([
-        hvcat(rows, [ i==j ? x : zeros(shape(ss[i])) for i in 1:n ]...)
-        for j in 1:n
+    basis = Array{Array{T, N}, 1}()
+    for j in 1:n
         for x in each_basis_element(ss[j])
-    ])
+            push!(basis, hvcat(rows, [ i==j ? x : zeros(T, shape(ss[i])) for i in 1:n ]...))
+        end
+    end
+    if isempty(basis)
+        push!(basis, hvcat(rows, [ zeros(T, shape(ss[i])) for i in 1:n ]...))
+    end
+    return Subspace(basis)
 end
 
 adjoint(ss::Subspace{<:Number, 2}) =
@@ -229,7 +236,7 @@ function random_hermitian_subspace(d::Int, n::Int)
 end
 
 # FIXME take datatype parameter
-empty_subspace(dims::Tuple) = Subspace([zeros(dims)])
+empty_subspace(dims::Tuple) = Subspace([zeros(Complex{Float64}, dims)])
 
 # FIXME take datatype parameter
 full_subspace(dims::Tuple) = perp(empty_subspace(dims))

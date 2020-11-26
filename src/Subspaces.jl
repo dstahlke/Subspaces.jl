@@ -19,12 +19,11 @@ struct Subspace{T, N}
     perp::AbstractArray
     tol::AbstractFloat
 
-    function Subspace(basis::AbstractArray{<:Number})
+    function Subspace(basis::AbstractArray{<:Number}; tol=1e-6)
         shape = size(basis)[1:end-1]
         d = size(basis)[end]
         mat = reshape(basis, prod(shape), d)
         s = svd(mat; full=true)
-        tol = 1e-6
         lastgood = findlast(s.S .>= tol)
         if typeof(lastgood) == Nothing
             lastgood = 0
@@ -34,9 +33,9 @@ struct Subspace{T, N}
         return new{eltype(good), length(shape)}(good, perp, tol)
     end
 
-    function Subspace(basis::AbstractArray{<:AbstractArray{<:Number}, 1})
+    function Subspace(basis::AbstractArray{<:AbstractArray{<:Number}, 1}; tol=1e-6)
         shape = size(basis[1])
-        return Subspace(cat(basis...; dims=length(shape)+1))
+        return Subspace(cat(basis...; dims=length(shape)+1); tol)
     end
 end
 
@@ -117,7 +116,8 @@ function hvcat(rows::Tuple{Vararg{Int}}, ss::Subspace{T, N}...) where {T, N}
 end
 
 adjoint(ss::Subspace{<:Number, 2}) =
-    Subspace([ x' for x in each_basis_element(ss) ])
+    Subspace(conj(permutedims(ss.basis, (2,1,3))))
+    #Subspace([ x' for x in each_basis_element(ss) ])
 
 function in(x::UniformScaling, ss::Subspace{T, 2}) where T
     return Matrix{T}(I, shape(ss)) in ss

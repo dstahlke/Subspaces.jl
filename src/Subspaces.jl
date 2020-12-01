@@ -1,6 +1,7 @@
 module Subspaces
 
 # FIXME many methods don't work well with empty subspaces
+# FIXME support real space of complex arrays, e.g., a space of Hermitian matrices
 
 import Base.hcat, Base.vcat, Base.hvcat, Base.cat, Base.+, Base.*, Base.kron, Base.show, Base.iterate, Base.==, Base.in, Base.adjoint
 import Base.|, Base.&, Base.~, Base./, Base.⊆
@@ -115,6 +116,9 @@ function hvcat(rows::Tuple{Vararg{Int}}, ss::Subspace{T, N}...) where {T, N}
     return Subspace(basis)
 end
 
+adjoint(ss::Subspace{<:Number, 1}) =
+    Subspace(conj(reshape(ss.basis, (1, shape(ss)[1], dim(ss)))))
+
 adjoint(ss::Subspace{<:Number, 2}) =
     Subspace(conj(permutedims(ss.basis, (2,1,3))))
     #Subspace([ x' for x in each_basis_element(ss) ])
@@ -208,38 +212,38 @@ random_element(ss::Subspace{T}) where T <: Number = frombasis(ss, randn(T, dim(s
 ### Constructors
 ################
 
-# FIXME take datatype parameter
-# FIXME should use a unitarily invariant distribution
-function random_subspace(d::Int, dims)
+function random_subspace(T::Type, d::Int, dims)
     if d < 0
         throw(ArgumentError("subspace dimension was negative: $d"))
     elseif d == 0
         return empty_subspace(dims)
     else
-        b = [ randn(ComplexF64, dims) for i in 1:d ]
+        b = [ randn(T, dims) for i in 1:d ]
         return Subspace(b)
     end
 end
 
-# FIXME take datatype parameter
-# FIXME should use a unitarily invariant distribution
-function random_hermitian_subspace(d::Int, n::Int)
+function random_hermitian_subspace(T::Type, d::Int, n::Int)
     if d < 0
         throw(ArgumentError("subspace dimension was negative: $d"))
     elseif d == 0
         return empty_subspace((n, n))
     else
-        b = [ randn(ComplexF64, n, n) for i in 1:d ]
+        b = [ randn(T, n, n) for i in 1:d ]
         b = [ x + x' for x in b ]
         return Subspace(b)
     end
 end
 
-# FIXME take datatype parameter
-empty_subspace(dims::Tuple) = Subspace([zeros(Complex{Float64}, dims)])
+empty_subspace(T::Type, dims::Tuple) = Subspace([zeros(T, dims)])
 
-# FIXME take datatype parameter
-full_subspace(dims::Tuple) = perp(empty_subspace(dims))
+full_subspace(T::Type, dims::Tuple) = perp(empty_subspace(T, dims))
+
+# FIXME type should not be optional
+random_subspace(d::Int, dims) = random_subspace(ComplexF64, d, dims)
+random_hermitian_subspace(d::Int, dims) = random_hermitian_subspace(ComplexF64, d, dims)
+empty_subspace(dims) = empty_subspace(ComplexF64, dims)
+full_subspace(dims) = full_subspace(ComplexF64, dims)
 
 #############
 ### Hermitian

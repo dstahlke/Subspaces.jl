@@ -50,7 +50,7 @@ dim(ss::Subspace) = size(ss.basis)[end]
 
 perp(ss::Subspace) = Subspace(ss.perp)
 
-const SubspaceOrArray = Union{Subspace, AbstractArray}
+const SubspaceOrArray{T, N} = Union{Subspace{T, N}, AbstractArray{T, N}}
 
 each_basis_element(ss::Subspace) = eachslice(ss.basis; dims=length(size(ss.basis)))
 
@@ -58,22 +58,15 @@ each_basis_element(arr::AbstractArray) = [arr]
 
 # FIXME all these need to propagate tol
 
-# FIXME take SubspaceOrArray
-# FIXME try this instead of da=...
-#function +(a::Subspace{Any, N}, b::Subspace{Any, N}) where N
-function +(a::Subspace, b::Subspace)
-    da = length(size(a.basis))
-    db = length(size(b.basis))
-    if da != db
-        throw(DimensionMismatch("Array rank mismatch: $da vs $db"))
-    end
-    return Subspace(cat(a.basis, b.basis; dims=da))
+# FIXME all functions should use T,U,N where possible
+function +(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
+    return Subspace(cat(a.basis, b.basis; dims=N+1))
 end
 
 # It'd be nice for these to all take SubspaceOrArray but then our overloads seem to be selected even
 # when all args are Array.
 
-*(a::Subspace, b::Subspace) =
+*(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} =
     Subspace([ x*y for x in each_basis_element(a) for y in each_basis_element(b) ])
 
 function kron(a::Subspace{T,N}, b::Subspace{U,N}) where {T,U,N}
@@ -155,18 +148,18 @@ end
 (*)(a::Subspace, b::AbstractArray) = a * Subspace([b])
 (*)(a::AbstractArray, b::Subspace) = Subspace([a]) * b
 
-(|)(a::Subspace, b::Subspace) = a + b
+(|)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = a + b
 (|)(a::Subspace, b::AbstractArray) = a + b
 (|)(a::AbstractArray, b::Subspace) = a + b
 
 (~)(ss::Subspace) = perp(ss)
 
-(&)(a::Subspace, b::Subspace) = perp(perp(a) + perp(b))
+(&)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = perp(perp(a) + perp(b))
 
 kron(a::Subspace, b::AbstractArray) = kron(a, Subspace([b]))
 kron(a::AbstractArray, b::Subspace) = kron(Subspace([a]), b)
 
-function (/)(a::Subspace, b::Subspace)
+function (/)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
     if !(b in a)
         throw(ArgumentError("divisor must be a subspace of dividend for subspace quotient"))
     end
@@ -180,11 +173,11 @@ end
 (⊆)(a::Subspace      , b::Subspace) = a in b
 (⊆)(a::AbstractArray , b::Subspace) = a in b
 (⊆)(a::UniformScaling, b::Subspace) = a in b
-(⊇)(a::Subspace, b::Subspace      ) = b in a
+(⊇)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = b in a
 (⊇)(a::Subspace, b::AbstractArray ) = b in a
 (⊇)(a::Subspace, b::UniformScaling) = b in a
 
-(⟂)(a::Subspace, b::Subspace) = a ⊆ perp(b)
+(⟂)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = a ⊆ perp(b)
 
 ################
 ### Math

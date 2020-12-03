@@ -59,3 +59,33 @@ eye(n) = Matrix(1.0*I, (n,n))
     @test dim(full_subspace(Float64, (3, 4))) == 12
     @test shape(full_subspace(Float64, (3, 4))) == (3, 4)
 end
+
+@testset "Empty spaces" begin
+    a = empty_subspace((3,4))
+    b = empty_subspace((4,5))
+    f = full_subspace((3,4))
+    @test dim(a) == 0
+    @test dim(~a) == 12
+    @test dim(f) == 12
+    @test dim(~f) == 0
+    @test shape(a') == (4,3)
+    @test shape(a+a) == (3,4)
+    @test shape(a*b) == (3,5)
+    @test shape(a&a) == (3,4)
+    @test shape(vcat(a)) == (3,4)
+    @test shape(vcat(a,a)) == (6,4)
+    @test shape(hcat(a)) == (3,4)
+    @test shape(hcat(a,a)) == (3,8)
+    @test shape(kron(a,b)) == (12,20)
+    @test shape(a/a) == (3,4)
+    @test dim(a/a) == 0
+    @test dim(f/a) == 12
+    @test dim(f/f) == 0
+    @test a ⊆ a
+    @test a ⊆ f
+    @test zeros((3,4)) in a
+    @test !(ones((3,4)) in a)
+end
+
+# FIXME test matrix * vector
+# FIXME test operations on empty spaces

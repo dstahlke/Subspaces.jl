@@ -1,7 +1,8 @@
 module Subspaces
 
-# FIXME many methods don't work well with empty subspaces
 # FIXME support real space of complex arrays, e.g., a space of Hermitian matrices
+# FIXME could use promote_rule to promote Array to Subspace
+#       https://erik-engheim.medium.com/defining-custom-units-in-julia-and-python-513c34a4c971
 
 import Base.hcat, Base.vcat, Base.hvcat, Base.cat, Base.+, Base.*, Base.kron, Base.show, Base.iterate, Base.==, Base.in, Base.adjoint
 import Base.|, Base.&, Base.~, Base./, Base.⊆
@@ -56,30 +57,41 @@ each_basis_element(ss::Subspace) = eachslice(ss.basis; dims=length(size(ss.basis
 
 each_basis_element(arr::AbstractArray) = [arr]
 
+function each_basis_element_or_zero(ss::Subspace{T, N}) where {T, N}
+    if dim(ss) == 0
+        return [ zeros(T, shape(ss)) ]
+    else
+        return each_basis_element(ss)
+    end
+end
+
 # FIXME all these need to propagate tol
 
 # FIXME all functions should use T,U,N where possible
 function +(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
+    if shape(a) != shape(b)
+        throw(DimensionMismatch("Array shape mismatch: $(shape(a)) vs $(shape(b))"))
+    end
     return Subspace(cat(a.basis, b.basis; dims=N+1))
 end
 
 # It'd be nice for these to all take SubspaceOrArray but then our overloads seem to be selected even
 # when all args are Array.
 
-*(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} =
-    Subspace([ x*y for x in each_basis_element(a) for y in each_basis_element(b) ])
+function *(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
+    #if dim(a) == 0 || dim(b) == 0
+    #    return Subspace([ zeros(T, shape(a)) * zeros(U, shape(b)) ])
+    #else
+        return Subspace([ x*y for x in each_basis_element_or_zero(a) for y in each_basis_element_or_zero(b) ])
+    #end
+end
 
 function kron(a::Subspace{T,N}, b::Subspace{U,N}) where {T,U,N}
-    if dim(a) == 0 || dim(b) == 0
-        return Subspace([
-            kron(zeros(T, shape(a)), zeros(U, shape(b))) ])
-    else
-        return Subspace([
-            kron(x, y)
-            for x in each_basis_element(a)
-            for y in each_basis_element(b)
-        ])
-    end
+    return Subspace([
+        kron(x, y)
+        for x in each_basis_element_or_zero(a)
+        for y in each_basis_element_or_zero(b)
+    ])
 end
 
 vcat(ss::Subspace...) = cat(ss...; dims=1)
@@ -91,7 +103,7 @@ function cat(ss::Subspace...; dims)
     Subspace([
         cat([ i==j ? x : zeros(shape(ss[i])) for i in 1:n ]...; dims=dims)
         for j in 1:n
-        for x in each_basis_element(ss[j])
+        for x in each_basis_element_or_zero(ss[j])
     ])
 end
 
@@ -99,7 +111,7 @@ function hvcat(rows::Tuple{Vararg{Int}}, ss::Subspace{T, N}...) where {T, N}
     n = length(ss)
     basis = Array{Array{T, N}, 1}()
     for j in 1:n
-        for x in each_basis_element(ss[j])
+        for x in each_basis_element_or_zero(ss[j])
             push!(basis, hvcat(rows, [ i==j ? x : zeros(T, shape(ss[i])) for i in 1:n ]...))
         end
     end
@@ -109,12 +121,8 @@ function hvcat(rows::Tuple{Vararg{Int}}, ss::Subspace{T, N}...) where {T, N}
     return Subspace(basis)
 end
 
-adjoint(ss::Subspace{<:Number, 1}) =
-    Subspace(conj(reshape(ss.basis, (1, shape(ss)[1], dim(ss)))))
-
-adjoint(ss::Subspace{<:Number, 2}) =
-    Subspace(conj(permutedims(ss.basis, (2,1,3))))
-    #Subspace([ x' for x in each_basis_element(ss) ])
+adjoint(ss::Subspace) =
+    Subspace([ x' for x in each_basis_element_or_zero(ss) ])
 
 function in(x::UniformScaling, ss::Subspace{T, 2}) where T
     return Matrix{T}(I, shape(ss)) in ss
@@ -271,7 +279,10 @@ function vec_to_hermit(v::AbstractArray{T, 1}, n::Integer) where T
     return Hermitian(M)
 end
 
-function hermitian_basis(ss::Subspace{Complex{T}}) where T
+function hermitian_basis(ss::Subspace{Complex{T}})::Array{Hermitian{Complex{T},Array{Complex{T},2}},1} where T
+    if dim(ss) == 0
+        return []
+    end
     n = shape(ss)[1]
     shape(ss)[2] == n || throw(ArgumentError("subspace shape was not square: $(shape(ss))"))
     M = hcat(

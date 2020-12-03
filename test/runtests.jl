@@ -58,6 +58,7 @@ eye(n) = Matrix(1.0*I, (n,n))
     @test dim(full_subspace(Float64, (10,))) == 10
     @test dim(full_subspace(Float64, (3, 4))) == 12
     @test shape(full_subspace(Float64, (3, 4))) == (3, 4)
+    @test dim(full_subspace(Float64, (4, 4)) / I) == 15
 end
 
 @testset "Empty spaces" begin

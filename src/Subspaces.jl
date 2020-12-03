@@ -3,6 +3,7 @@ module Subspaces
 # FIXME support real space of complex arrays, e.g., a space of Hermitian matrices
 # FIXME could use promote_rule to promote Array to Subspace
 #       https://erik-engheim.medium.com/defining-custom-units-in-julia-and-python-513c34a4c971
+# FIXME all functions need to propagate tol
 
 import Base.hcat, Base.vcat, Base.hvcat, Base.cat, Base.+, Base.*, Base.kron, Base.show, Base.iterate, Base.==, Base.in, Base.adjoint
 import Base.|, Base.&, Base.~, Base./, Base.⊆
@@ -65,9 +66,6 @@ function each_basis_element_or_zero(ss::Subspace{T, N}) where {T, N}
     end
 end
 
-# FIXME all these need to propagate tol
-
-# FIXME all functions should use T,U,N where possible
 function +(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
     if shape(a) != shape(b)
         throw(DimensionMismatch("Array shape mismatch: $(shape(a)) vs $(shape(b))"))
@@ -148,8 +146,8 @@ function ==(a::Subspace{<:Number, N}, b::Subspace{<:Number, N}) where N
     return dim(a) == dim(b) && a in b
 end
 
-(+)(a::Subspace, b::AbstractArray) = a + Subspace([b])
-(+)(a::AbstractArray, b::Subspace) = Subspace([a]) + b
+(+)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a + Subspace([b])
+(+)(a::AbstractArray{T, N}, b::Subspace{U, N}) where {T,U,N} = Subspace([a]) + b
 (+)(ss::Subspace{T, 2}, x::UniformScaling) where T = ss + Subspace([ Array{T}(I, shape(ss)) ])
 (+)(x::UniformScaling, ss::Subspace{T, 2}) where T = ss + I
 
@@ -157,8 +155,8 @@ end
 (*)(a::AbstractArray, b::Subspace) = Subspace([a]) * b
 
 (|)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = a + b
-(|)(a::Subspace, b::AbstractArray) = a + b
-(|)(a::AbstractArray, b::Subspace) = a + b
+(|)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a + b
+(|)(a::AbstractArray{T, N}, b::Subspace{U, N}) where {T,U,N} = a + b
 
 (~)(ss::Subspace) = perp(ss)
 
@@ -168,22 +166,17 @@ kron(a::Subspace, b::AbstractArray) = kron(a, Subspace([b]))
 kron(a::AbstractArray, b::Subspace) = kron(Subspace([a]), b)
 
 function (/)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
-    if !(b in a)
+    if !(b ⊆ a)
         throw(ArgumentError("divisor must be a subspace of dividend for subspace quotient"))
     end
     return perp(perp(a) + b)
 end
 
-(/)(a::Subspace, b::AbstractArray) = a / Subspace([b])
+(/)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a / Subspace([b])
+(/)(a::Subspace{T, 2}, b::UniformScaling) where T = a / Array{T}(I, shape(a))
 
-(/)(ss::Subspace{T, 2}, x::UniformScaling) where T = ss / Array{T}(I, shape(ss))
-
-(⊆)(a::Subspace      , b::Subspace) = a in b
-(⊆)(a::AbstractArray , b::Subspace) = a in b
-(⊆)(a::UniformScaling, b::Subspace) = a in b
+(⊆)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = a in b
 (⊇)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = b in a
-(⊇)(a::Subspace, b::AbstractArray ) = b in a
-(⊇)(a::Subspace, b::UniformScaling) = b in a
 
 (⟂)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = a ⊆ perp(b)
 

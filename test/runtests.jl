@@ -18,9 +18,9 @@ end
 eye(n) = Matrix(1.0*I, (n,n))
 
 @testset "Basic tests" begin
-    a = random_subspace(1, 10)
-    b = random_subspace(2, 10)
-    c = random_subspace(3, 10)
+    a = random_subspace(ComplexF64, 1, 10)
+    b = random_subspace(ComplexF64, 2, 10)
+    c = random_subspace(ComplexF64, 3, 10)
     @test dim(a) == 1
     @test dim(b) == 2
     @test dim(c) == 3
@@ -62,9 +62,9 @@ eye(n) = Matrix(1.0*I, (n,n))
 end
 
 @testset "Empty spaces" begin
-    a = empty_subspace((3,4))
-    b = empty_subspace((4,5))
-    f = full_subspace((3,4))
+    a = empty_subspace(Float64, (3,4))
+    b = empty_subspace(Float64, (4,5))
+    f = full_subspace(Float64, (3,4))
     @test dim(a) == 0
     @test dim(~a) == 12
     @test dim(f) == 12

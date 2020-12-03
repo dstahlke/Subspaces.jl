@@ -234,10 +234,10 @@ empty_subspace(T::Type, dims::Tuple) = Subspace([zeros(T, dims)])
 full_subspace(T::Type, dims::Tuple) = perp(empty_subspace(T, dims))
 
 # FIXME type should not be optional
-random_subspace(d::Int, dims) = random_subspace(ComplexF64, d, dims)
-random_hermitian_subspace(d::Int, dims) = random_hermitian_subspace(ComplexF64, d, dims)
-empty_subspace(dims) = empty_subspace(ComplexF64, dims)
-full_subspace(dims) = full_subspace(ComplexF64, dims)
+#random_subspace(d::Int, dims) = random_subspace(ComplexF64, d, dims)
+#random_hermitian_subspace(d::Int, dims) = random_hermitian_subspace(ComplexF64, d, dims)
+#empty_subspace(dims) = empty_subspace(ComplexF64, dims)
+#full_subspace(dims) = full_subspace(ComplexF64, dims)
 
 #############
 ### Hermitian

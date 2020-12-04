@@ -1,8 +1,5 @@
 module Subspaces
 
-# FIXME support real space of complex arrays, e.g., a space of Hermitian matrices
-# FIXME could use promote_rule to promote Array to Subspace
-#       https://erik-engheim.medium.com/defining-custom-units-in-julia-and-python-513c34a4c971
 # FIXME all functions need to propagate tol
 
 import Base.hcat, Base.vcat, Base.hvcat, Base.cat, Base.+, Base.*, Base.kron, Base.show, Base.iterate, Base.==, Base.in, Base.adjoint
@@ -98,6 +95,8 @@ hcat(ss::Subspace...) = cat(ss...; dims=2)
 
 function cat(ss::Subspace...; dims)
     n = length(ss)
+    # FIXME doesn't work well with heterogenous types
+    #T = promote_type(map((x)->eltype(x.basis), [ss...])...)
     Subspace([
         cat([ i==j ? x : zeros(shape(ss[i])) for i in 1:n ]...; dims=dims)
         for j in 1:n
@@ -232,12 +231,6 @@ end
 empty_subspace(T::Type, dims::Tuple) = Subspace([zeros(T, dims)])
 
 full_subspace(T::Type, dims::Tuple) = perp(empty_subspace(T, dims))
-
-# FIXME type should not be optional
-#random_subspace(d::Int, dims) = random_subspace(ComplexF64, d, dims)
-#random_hermitian_subspace(d::Int, dims) = random_hermitian_subspace(ComplexF64, d, dims)
-#empty_subspace(dims) = empty_subspace(ComplexF64, dims)
-#full_subspace(dims) = full_subspace(ComplexF64, dims)
 
 #############
 ### Hermitian

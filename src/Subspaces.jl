@@ -69,8 +69,8 @@ struct Subspace{T, N}
     end
 end
 
-function show(io::IO, ss::Subspace)
-    print(io, "Subspace{$(eltype(ss.basis))} shape $(shape(ss)) dim $(dim(ss))")
+function show(io::IO, S::Subspace)
+    print(io, "Subspace{$(eltype(S.basis))} shape $(shape(S)) dim $(dim(S))")
 end
 
 """
@@ -82,7 +82,7 @@ julia> shape(Subspace([ [1,2,3], [4,5,6] ]))
 (3,)
 ```
 """
-shape(ss::Subspace)::Tuple{Integer} = size(ss.basis)[1:end-1]
+shape(S::Subspace)::Tuple{Integer} = size(S.basis)[1:end-1]
 
 """
 $(TYPEDSIGNATURES)
@@ -93,7 +93,7 @@ julia> dim(Subspace([ [1,2,3], [4,5,6] ]))
 2
 ```
 """
-dim(ss::Subspace)::Integer = size(ss.basis)[end]
+dim(S::Subspace)::Integer = size(S.basis)[end]
 
 """
 $(TYPEDSIGNATURES)
@@ -113,19 +113,21 @@ julia> perp(S) ⟂ S
 true
 ```
 """
-perp(ss::Subspace)::Subspace = Subspace(ss.perp)
+perp(S::Subspace)::Subspace = Subspace(S.perp)
 
-const SubspaceOrArray{T, N} = Union{Subspace{T, N}, AbstractArray{T, N}}
+# It'd be nice for these to all take SubspaceOrArray but then our overloads seem to be selected even
+# when all args are Array.
+#const SubspaceOrArray{T, N} = Union{Subspace{T, N}, AbstractArray{T, N}}
 
-each_basis_element(ss::Subspace) = eachslice(ss.basis; dims=length(size(ss.basis)))
+each_basis_element(S::Subspace) = eachslice(S.basis; dims=length(size(S.basis)))
 
 each_basis_element(arr::AbstractArray) = [arr]
 
-function each_basis_element_or_zero(ss::Subspace{T, N}) where {T, N}
-    if dim(ss) == 0
-        return [ zeros(T, shape(ss)) ]
+function each_basis_element_or_zero(S::Subspace{T, N}) where {T, N}
+    if dim(S) == 0
+        return [ zeros(T, shape(S)) ]
     else
-        return each_basis_element(ss)
+        return each_basis_element(S)
     end
 end
 
@@ -145,9 +147,6 @@ function +(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
     return Subspace(cat(a.basis, b.basis; dims=N+1))
 end
 
-# It'd be nice for these to all take SubspaceOrArray but then our overloads seem to be selected even
-# when all args are Array.
-
 function *(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
     #if dim(a) == 0 || dim(b) == 0
     #    return Subspace([ zeros(T, shape(a)) * zeros(U, shape(b)) ])
@@ -164,44 +163,44 @@ function kron(a::Subspace{T,N}, b::Subspace{U,N}) where {T,U,N}
     ])
 end
 
-vcat(ss::Subspace...) = cat(ss...; dims=1)
+vcat(S::Subspace...) = cat(S...; dims=1)
 
-hcat(ss::Subspace...) = cat(ss...; dims=2)
+hcat(S::Subspace...) = cat(S...; dims=2)
 
-function cat(ss::Subspace...; dims)
-    n = length(ss)
+function cat(S::Subspace...; dims)
+    n = length(S)
     # FIXME doesn't work well with heterogenous types
-    #T = promote_type(map((x)->eltype(x.basis), [ss...])...)
+    #T = promote_type(map((x)->eltype(x.basis), [S...])...)
     Subspace([
-        cat([ i==j ? x : zeros(shape(ss[i])) for i in 1:n ]...; dims=dims)
+        cat([ i==j ? x : zeros(shape(S[i])) for i in 1:n ]...; dims=dims)
         for j in 1:n
-        for x in each_basis_element_or_zero(ss[j])
+        for x in each_basis_element_or_zero(S[j])
     ])
 end
 
-function hvcat(rows::Tuple{Vararg{Int}}, ss::Subspace{T, N}...) where {T, N}
-    n = length(ss)
+function hvcat(rows::Tuple{Vararg{Int}}, S::Subspace{T, N}...) where {T, N}
+    n = length(S)
     basis = Array{Array{T, N}, 1}()
     for j in 1:n
-        for x in each_basis_element_or_zero(ss[j])
-            push!(basis, hvcat(rows, [ i==j ? x : zeros(T, shape(ss[i])) for i in 1:n ]...))
+        for x in each_basis_element_or_zero(S[j])
+            push!(basis, hvcat(rows, [ i==j ? x : zeros(T, shape(S[i])) for i in 1:n ]...))
         end
     end
     if isempty(basis)
-        push!(basis, hvcat(rows, [ zeros(T, shape(ss[i])) for i in 1:n ]...))
+        push!(basis, hvcat(rows, [ zeros(T, shape(S[i])) for i in 1:n ]...))
     end
     return Subspace(basis)
 end
 
-adjoint(ss::Subspace) =
-    Subspace([ x' for x in each_basis_element_or_zero(ss) ])
+adjoint(S::Subspace) =
+    Subspace([ x' for x in each_basis_element_or_zero(S) ])
 
-function in(x::UniformScaling, ss::Subspace{T, 2}) where T
-    return Matrix{T}(I, shape(ss)) in ss
+function in(x::UniformScaling, S::Subspace{T, 2}) where T
+    return Matrix{T}(I, shape(S)) in S
 end
 
-function in(x::AbstractArray{<:Number, N}, ss::Subspace{<:Number, N}) where N
-    return norm(x - projection(ss, x)) <= ss.tol
+function in(x::AbstractArray{<:Number, N}, S::Subspace{<:Number, N}) where N
+    return norm(x - projection(S, x)) <= S.tol
 end
 
 function in(a::Subspace{<:Number, N}, b::Subspace{<:Number, N}) where N
@@ -222,8 +221,8 @@ end
 
 (+)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a + Subspace([b])
 (+)(a::AbstractArray{T, N}, b::Subspace{U, N}) where {T,U,N} = Subspace([a]) + b
-(+)(ss::Subspace{T, 2}, x::UniformScaling) where T = ss + Subspace([ Array{T}(I, shape(ss)) ])
-(+)(x::UniformScaling, ss::Subspace{T, 2}) where T = ss + I
+(+)(S::Subspace{T, 2}, x::UniformScaling) where T = S + Subspace([ Array{T}(I, shape(S)) ])
+(+)(x::UniformScaling, S::Subspace{T, 2}) where T = S + I
 
 (*)(a::Subspace, b::AbstractArray) = a * Subspace([b])
 (*)(a::AbstractArray, b::Subspace) = Subspace([a]) * b
@@ -232,7 +231,7 @@ end
 (|)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a + b
 (|)(a::AbstractArray{T, N}, b::Subspace{U, N}) where {T,U,N} = a + b
 
-(~)(ss::Subspace) = perp(ss)
+(~)(S::Subspace) = perp(S)
 
 (&)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = perp(perp(a) + perp(b))
 
@@ -258,23 +257,23 @@ end
 ### Math
 ################
 
-function tobasis(ss::Subspace{<:Number, N}, x::AbstractArray{<:Number, N}) where N
-    shp = shape(ss)
-    basis_mat = reshape(ss.basis, prod(shp), dim(ss))
+function tobasis(S::Subspace{<:Number, N}, x::AbstractArray{<:Number, N}) where N
+    shp = shape(S)
+    basis_mat = reshape(S.basis, prod(shp), dim(S))
     return basis_mat' * vec(x)
 end
 
-function frombasis(ss::Subspace, x::AbstractArray{<:Number, 1})
-    shp = shape(ss)
-    basis_mat = reshape(ss.basis, prod(shp), dim(ss))
+function frombasis(S::Subspace, x::AbstractArray{<:Number, 1})
+    shp = shape(S)
+    basis_mat = reshape(S.basis, prod(shp), dim(S))
     return reshape(basis_mat * x, shp)
 end
 
-function projection(ss::Subspace{<:Number, N}, x::AbstractArray{<:Number, N}) where N
-    return frombasis(ss, tobasis(ss, x))
+function projection(S::Subspace{<:Number, N}, x::AbstractArray{<:Number, N}) where N
+    return frombasis(S, tobasis(S, x))
 end
 
-random_element(ss::Subspace{T}) where T <: Number = frombasis(ss, randn(T, dim(ss)))
+random_element(S::Subspace{T}) where T <: Number = frombasis(S, randn(T, dim(S)))
 
 ################
 ### Constructors
@@ -340,18 +339,18 @@ function vec_to_hermit(v::AbstractArray{T, 1}, n::Integer) where T
     return Hermitian(M)
 end
 
-function hermitian_basis(ss::Subspace{Complex{T}})::Array{Hermitian{Complex{T},Array{Complex{T},2}},1} where T
-    if dim(ss) == 0
+function hermitian_basis(S::Subspace{Complex{T}})::Array{Hermitian{Complex{T},Array{Complex{T},2}},1} where T
+    if dim(S) == 0
         return []
     end
-    n = shape(ss)[1]
-    shape(ss)[2] == n || throw(ArgumentError("subspace shape was not square: $(shape(ss))"))
+    n = shape(S)[1]
+    shape(S)[2] == n || throw(ArgumentError("subspace shape was not square: $(shape(S))"))
     M = hcat(
-        [ hermit_to_vec( x     + x'     ) for x in each_basis_element(ss) ]...,
-        [ hermit_to_vec((x*1im)+(x*1im)') for x in each_basis_element(ss) ]...
+        [ hermit_to_vec( x     + x'     ) for x in each_basis_element(S) ]...,
+        [ hermit_to_vec((x*1im)+(x*1im)') for x in each_basis_element(S) ]...
     )
     hb = [ vec_to_hermit(x, n) for x in each_basis_element(Subspace(M)) ]
-    @assert (Subspace(hb) == ss) "Hermitian basis didn't equal original space"
+    @assert (Subspace(hb) == S) "Hermitian basis didn't equal original space"
     return hb
 end
 
@@ -359,40 +358,40 @@ end
 ### Support for Convex.jl
 #########################
 
-function tobasis(ss::Subspace{<:Number, N}, x::Convex.AbstractExpr) where N
-    shp = shape(ss)
-    basis_mat = reshape(ss.basis, prod(shp), dim(ss))
+function tobasis(S::Subspace{<:Number, N}, x::Convex.AbstractExpr) where N
+    shp = shape(S)
+    basis_mat = reshape(S.basis, prod(shp), dim(S))
     return basis_mat' * vec(x)
 end
 
-function frombasis(ss::Subspace{<:Number, 1}, x::Convex.AbstractExpr)
-    shp = shape(ss)
-    basis_mat = reshape(ss.basis, prod(shp), dim(ss))
+function frombasis(S::Subspace{<:Number, 1}, x::Convex.AbstractExpr)
+    shp = shape(S)
+    basis_mat = reshape(S.basis, prod(shp), dim(S))
     return basis_mat * x
 end
 
-function frombasis(ss::Subspace{<:Number, 2}, x::Convex.AbstractExpr)
-    shp = shape(ss)
-    basis_mat = reshape(ss.basis, prod(shp), dim(ss))
+function frombasis(S::Subspace{<:Number, 2}, x::Convex.AbstractExpr)
+    shp = shape(S)
+    basis_mat = reshape(S.basis, prod(shp), dim(S))
     return reshape(basis_mat * x, shp...)
 end
 
-function projection(ss::Subspace{<:Number, N}, x::Convex.AbstractExpr) where N
-    return frombasis(ss, tobasis(ss, x))
+function projection(S::Subspace{<:Number, N}, x::Convex.AbstractExpr) where N
+    return frombasis(S, tobasis(S, x))
 end
 
-function in(x::Convex.AbstractExpr, ss::Subspace{<:Number, N}) where N
-    return tobasis(perp(ss), x) == 0
+function in(x::Convex.AbstractExpr, S::Subspace{<:Number, N}) where N
+    return tobasis(perp(S), x) == 0
 end
 
-function variable_in_space(ss::Subspace{<:Complex{<:Real}, N}) where N
-    x = Convex.ComplexVariable(dim(ss))
-    return frombasis(ss, x)
+function variable_in_space(S::Subspace{<:Complex{<:Real}, N}) where N
+    x = Convex.ComplexVariable(dim(S))
+    return frombasis(S, x)
 end
 
-function variable_in_space(ss::Subspace{<:Real, N}) where N
-    x = Convex.Variable(dim(ss))
-    return frombasis(ss, x)
+function variable_in_space(S::Subspace{<:Real, N}) where N
+    x = Convex.Variable(dim(S))
+    return frombasis(S, x)
 end
 
 end # module

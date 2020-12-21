@@ -82,7 +82,7 @@ julia> shape(Subspace([ [1,2,3], [4,5,6] ]))
 (3,)
 ```
 """
-shape(S::Subspace)::Tuple{Integer} = size(S.basis)[1:end-1]
+shape(S::Subspace)::Tuple{Vararg{<:Integer}} = size(S.basis)[1:end-1]
 
 """
 $(TYPEDSIGNATURES)

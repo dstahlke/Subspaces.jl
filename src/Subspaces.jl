@@ -75,6 +75,7 @@ end
 
 """
 $(TYPEDSIGNATURES)
+
 Returns the size of the elements of a subspace.
 
 ```jldoctest
@@ -86,6 +87,7 @@ shape(S::Subspace)::Tuple{Vararg{<:Integer}} = size(S.basis)[1:end-1]
 
 """
 $(TYPEDSIGNATURES)
+
 Returns the linear dimension of this subspace.
 
 ```jldoctest
@@ -97,6 +99,7 @@ dim(S::Subspace)::Integer = size(S.basis)[end]
 
 """
 $(TYPEDSIGNATURES)
+
 Returns the perpendicular subspace.  Can also be written as ~S.
 
 ```jldoctest
@@ -119,6 +122,11 @@ perp(S::Subspace)::Subspace = Subspace(S.perp)
 # when all args are Array.
 #const SubspaceOrArray{T, N} = Union{Subspace{T, N}, AbstractArray{T, N}}
 
+"""
+$(TYPEDSIGNATURES)
+
+Create a generator that iterates over orthonormal basis vectors of a subspace.
+"""
 each_basis_element(S::Subspace) = eachslice(S.basis; dims=length(size(S.basis)))
 
 each_basis_element(arr::AbstractArray) = [arr]
@@ -131,7 +139,7 @@ function each_basis_element_or_zero(S::Subspace{T, N}) where {T, N}
     end
 end
 
-raw"""
+"""
     +(a::Subspace, b::Subspace)
     +(a::AbstractArray, b::Subspace)
     +(a::Subspace, b::AbstractArray)
@@ -147,6 +155,33 @@ function +(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
     return Subspace(cat(a.basis, b.basis; dims=N+1))
 end
 
+(+)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a + Subspace([b])
+(+)(a::AbstractArray{T, N}, b::Subspace{U, N}) where {T,U,N} = Subspace([a]) + b
+(+)(S::Subspace{T, 2}, x::UniformScaling) where T = S + Subspace([ Array{T}(I, shape(S)) ])
+(+)(x::UniformScaling, S::Subspace{T, 2}) where T = S + I
+
+"""
+    |(a::Subspace, b::Subspace)
+    |(a::AbstractArray, b::Subspace)
+    |(a::Subspace, b::AbstractArray)
+    |(a::UniformScaling, b::Subspace)
+    |(a::Subspace, b::UniformScaling)
+
+Linear span of two subspaces, or of a subspace an and array.  Equivalent to |(a, b).
+"""
+(|)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = a + b
+(|)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a + b
+(|)(a::AbstractArray{T, N}, b::Subspace{U, N}) where {T,U,N} = a + b
+(|)(S::Subspace{T, 2}, x::UniformScaling) where T = S + I
+(|)(x::UniformScaling, S::Subspace{T, 2}) where T = S + I
+
+"""
+    *(a::Subspace, b::Subspace)
+    *(a::AbstractArray, b::Subspace)
+    *(a::Subspace, b::AbstractArray)
+
+Linear span of products of elements of space `a` with elements of space `b`.
+"""
 function *(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
     #if dim(a) == 0 || dim(b) == 0
     #    return Subspace([ zeros(T, shape(a)) * zeros(U, shape(b)) ])
@@ -154,6 +189,9 @@ function *(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
         return Subspace([ x*y for x in each_basis_element_or_zero(a) for y in each_basis_element_or_zero(b) ])
     #end
 end
+
+(*)(a::Subspace, b::AbstractArray) = a * Subspace([b])
+(*)(a::AbstractArray, b::Subspace) = Subspace([a]) * b
 
 function kron(a::Subspace{T,N}, b::Subspace{U,N}) where {T,U,N}
     return Subspace([
@@ -218,18 +256,6 @@ end
 function ==(a::Subspace{<:Number, N}, b::Subspace{<:Number, N}) where N
     return dim(a) == dim(b) && a in b
 end
-
-(+)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a + Subspace([b])
-(+)(a::AbstractArray{T, N}, b::Subspace{U, N}) where {T,U,N} = Subspace([a]) + b
-(+)(S::Subspace{T, 2}, x::UniformScaling) where T = S + Subspace([ Array{T}(I, shape(S)) ])
-(+)(x::UniformScaling, S::Subspace{T, 2}) where T = S + I
-
-(*)(a::Subspace, b::AbstractArray) = a * Subspace([b])
-(*)(a::AbstractArray, b::Subspace) = Subspace([a]) * b
-
-(|)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = a + b
-(|)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a + b
-(|)(a::AbstractArray{T, N}, b::Subspace{U, N}) where {T,U,N} = a + b
 
 (~)(S::Subspace) = perp(S)
 

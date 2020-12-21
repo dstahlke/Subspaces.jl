@@ -1,6 +1,9 @@
 module Subspaces
 
+using DocStringExtensions
+
 # FIXME all functions need to propagate tol
+# FIXME rename shape to size
 
 import Base.hcat, Base.vcat, Base.hvcat, Base.cat, Base.+, Base.*, Base.kron, Base.show, Base.iterate, Base.==, Base.in, Base.adjoint
 import Base.|, Base.&, Base.~, Base./, Base.⊆
@@ -14,12 +17,39 @@ export hermitian_basis
 export variable_in_space
 export ⟂
 
+default_tol = 1e-6
+
+"""
+    Subspace(basis::AbstractArray{AbstractArray{N}, 1}; tol::Real=$(default_tol))
+
+Create a subspace from the given basis, expressed as a list of basis vectors.
+
+    Subspace(basis::AbstractArray{N+1}; tol::Real=$(default_tol))
+
+Create a subspace from a basis given as a multi-dimensional array.  The last array index
+enumerates the basis elements.  E.g., if given a matrix this constructor will create a
+subspace representing the column span of that matrix.
+
+The `tol` parameter sets the tolerance for determining whether vectors are linearly
+dependent.
+
+$(TYPEDFIELDS)
+
+```jldoctest
+julia> Subspace([[1, 2, 3], [4, 5, 6]]) == Subspace([ 1 4; 2 5; 3 6])
+true
+```
+"""
 struct Subspace{T, N}
-    basis::AbstractArray
-    perp::AbstractArray
+    """An orthonormal basis for this subspace.  The final index of this array indexes the
+    basis vectors."""
+    basis::Array # FIXME can it somehow be Array{T, N+1}?
+    """An orthonormal basis for the perpendicular subspace."""
+    perp::Array # FIXME can it somehow be Array{T, N+1}?
+    """The tolerance for determining whether vectors are linearly dependent."""
     tol::AbstractFloat
 
-    function Subspace(basis::AbstractArray{<:Number}; tol=1e-6)
+    function Subspace(basis::AbstractArray{<:Number}; tol::Real=default_tol)
         shape = size(basis)[1:end-1]
         d = size(basis)[end]
         mat = reshape(basis, prod(shape), d)
@@ -33,7 +63,7 @@ struct Subspace{T, N}
         return new{eltype(good), length(shape)}(good, perp, tol)
     end
 
-    function Subspace(basis::AbstractArray{<:AbstractArray{<:Number}, 1}; tol=1e-6)
+    function Subspace(basis::AbstractArray{<:AbstractArray{<:Number}, 1}; tol::Real=default_tol)
         shape = size(basis[1])
         return Subspace(cat(basis...; dims=length(shape)+1); tol)
     end
@@ -43,11 +73,47 @@ function show(io::IO, ss::Subspace)
     print(io, "Subspace{$(eltype(ss.basis))} shape $(shape(ss)) dim $(dim(ss))")
 end
 
-shape(ss::Subspace) = size(ss.basis)[1:end-1]
+"""
+$(TYPEDSIGNATURES)
+Returns the size of the elements of a subspace.
 
-dim(ss::Subspace) = size(ss.basis)[end]
+```jldoctest
+julia> shape(Subspace([ [1,2,3], [4,5,6] ]))
+(3,)
+```
+"""
+shape(ss::Subspace)::Tuple{Integer} = size(ss.basis)[1:end-1]
 
-perp(ss::Subspace) = Subspace(ss.perp)
+"""
+$(TYPEDSIGNATURES)
+Returns the linear dimension of this subspace.
+
+```jldoctest
+julia> dim(Subspace([ [1,2,3], [4,5,6] ]))
+2
+```
+"""
+dim(ss::Subspace)::Integer = size(ss.basis)[end]
+
+"""
+$(TYPEDSIGNATURES)
+Returns the perpendicular subspace.  Can also be written as ~S.
+
+```jldoctest
+julia> S = Subspace([ [1,2,3], [4,5,6] ])
+Subspace{Float64} shape (3,) dim 2
+
+julia> perp(S)
+Subspace{Float64} shape (3,) dim 1
+
+julia> perp(S) == ~S
+true
+
+julia> perp(S) ⟂ S
+true
+```
+"""
+perp(ss::Subspace)::Subspace = Subspace(ss.perp)
 
 const SubspaceOrArray{T, N} = Union{Subspace{T, N}, AbstractArray{T, N}}
 
@@ -63,6 +129,15 @@ function each_basis_element_or_zero(ss::Subspace{T, N}) where {T, N}
     end
 end
 
+raw"""
+    +(a::Subspace, b::Subspace)
+    +(a::AbstractArray, b::Subspace)
+    +(a::Subspace, b::AbstractArray)
+    +(a::UniformScaling, b::Subspace)
+    +(a::Subspace, b::UniformScaling)
+
+Linear span of two subspaces, or of a subspace an and array.  Equivalent to |(a, b).
+"""
 function +(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
     if shape(a) != shape(b)
         throw(DimensionMismatch("Array shape mismatch: $(shape(a)) vs $(shape(b))"))

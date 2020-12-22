@@ -1,6 +1,6 @@
 using Documenter, Subspaces
 
-DocMeta.setdocmeta!(Subspaces, :DocTestSetup, :(using Subspaces); recursive=true)
+DocMeta.setdocmeta!(Subspaces, :DocTestSetup, :( using Subspaces; using LinearAlgebra ); recursive=true)
 
 makedocs(
     sitename="Subspaces.jl",
@@ -11,5 +11,6 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "Usage" => "usage.md",
+        "Reference" => "reference.md",
     ],
 )

@@ -100,7 +100,7 @@ dim(S::Subspace)::Integer = size(S.basis)[end]
 """
 $(TYPEDSIGNATURES)
 
-Returns the perpendicular subspace.  Can also be written as ~S.
+Returns the orthogonal subspace.  Can also be written as `~S`.
 
 ```jldoctest
 julia> S = Subspace([ [1,2,3], [4,5,6] ])
@@ -117,6 +117,13 @@ true
 ```
 """
 perp(S::Subspace)::Subspace = Subspace(S.perp)
+
+"""
+$(TYPEDSIGNATURES)
+
+Returns the perpendicular subspace.  Can also be written as `perp(S)`.
+"""
+(~)(S::Subspace) = perp(S)
 
 # It'd be nice for these to all take SubspaceOrArray but then our overloads seem to be selected even
 # when all args are Array.
@@ -193,6 +200,11 @@ end
 (*)(a::Subspace, b::AbstractArray) = a * Subspace([b])
 (*)(a::AbstractArray, b::Subspace) = Subspace([a]) * b
 
+"""
+$(TYPEDSIGNATURES)
+
+Linear span of Kronecker products of elements of space `a` with elements of space `b`.
+"""
 function kron(a::Subspace{T,N}, b::Subspace{U,N}) where {T,U,N}
     return Subspace([
         kron(x, y)
@@ -201,10 +213,28 @@ function kron(a::Subspace{T,N}, b::Subspace{U,N}) where {T,U,N}
     ])
 end
 
+kron(a::Subspace, b::AbstractArray) = kron(a, Subspace([b]))
+kron(a::AbstractArray, b::Subspace) = kron(Subspace([a]), b)
+
+"""
+$(TYPEDSIGNATURES)
+
+Vertical concatenations of vector subspaces (direct sum).
+"""
 vcat(S::Subspace...) = cat(S...; dims=1)
 
+"""
+$(TYPEDSIGNATURES)
+
+Horizontal concatenations of vector subspaces (direct sum).
+"""
 hcat(S::Subspace...) = cat(S...; dims=2)
 
+"""
+$(TYPEDSIGNATURES)
+
+Concatenations of vector subspaces (direct sum).
+"""
 function cat(S::Subspace...; dims)
     n = length(S)
     # FIXME doesn't work well with heterogenous types
@@ -216,6 +246,11 @@ function cat(S::Subspace...; dims)
     ])
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Concatenations of vector subspaces (direct sum).
+"""
 function hvcat(rows::Tuple{Vararg{Int}}, S::Subspace{T, N}...) where {T, N}
     n = length(S)
     basis = Array{Array{T, N}, 1}()
@@ -230,17 +265,32 @@ function hvcat(rows::Tuple{Vararg{Int}}, S::Subspace{T, N}...) where {T, N}
     return Subspace(basis)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Adjoint of vector subspace (linear span of adjoints of members of a space).
+"""
 adjoint(S::Subspace) =
     Subspace([ x' for x in each_basis_element_or_zero(S) ])
+
+"""
+$(TYPEDSIGNATURES)
+
+Check for membership of a vector in a vector subspace.
+"""
+function in(x::AbstractArray{<:Number, N}, S::Subspace{<:Number, N}) where N
+    return norm(x - projection(S, x)) <= S.tol
+end
 
 function in(x::UniformScaling, S::Subspace{T, 2}) where T
     return Matrix{T}(I, shape(S)) in S
 end
 
-function in(x::AbstractArray{<:Number, N}, S::Subspace{<:Number, N}) where N
-    return norm(x - projection(S, x)) <= S.tol
-end
+"""
+$(TYPEDSIGNATURES)
 
+Check whether `a` is a subspace of `b`.
+"""
 function in(a::Subspace{<:Number, N}, b::Subspace{<:Number, N}) where N
     shp = shape(a)
     if dim(a) > dim(b)
@@ -253,17 +303,55 @@ function in(a::Subspace{<:Number, N}, b::Subspace{<:Number, N}) where N
     return all(s .> (1.0 - tol))
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Check whether two vector subspaces are equal.
+"""
 function ==(a::Subspace{<:Number, N}, b::Subspace{<:Number, N}) where N
     return dim(a) == dim(b) && a in b
 end
 
-(~)(S::Subspace) = perp(S)
+"""
+$(TYPEDSIGNATURES)
 
+Intersection of vector subspaces.
+"""
 (&)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = perp(perp(a) + perp(b))
 
-kron(a::Subspace, b::AbstractArray) = kron(a, Subspace([b]))
-kron(a::AbstractArray, b::Subspace) = kron(Subspace([a]), b)
+"""
+$(TYPEDSIGNATURES)
 
+Intersection of vector subspaces.
+"""
+(∩)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = a & b
+
+"""
+$(TYPEDSIGNATURES)
+
+Quotient of vector subspaces.  Throws error unless `b ⊆ a`.
+
+```jldoctest
+julia> a = random_subspace(ComplexF64, 2, 10)
+Subspace{Complex{Float64}} shape (10,) dim 2
+
+julia> b = random_subspace(ComplexF64, 3, 10)
+Subspace{Complex{Float64}} shape (10,) dim 3
+
+julia> a / b
+ERROR: ArgumentError: divisor must be a subspace of dividend for subspace quotient
+
+julia> (a+b) / a
+Subspace{Complex{Float64}} shape (10,) dim 3
+
+julia> (a+b) / a == Subspace([ projection(~a, x) for x in each_basis_element(b) ])
+true
+
+julia> ((a+b) / b) ⟂ b
+true
+
+```
+"""
 function (/)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
     if !(b ⊆ a)
         throw(ArgumentError("divisor must be a subspace of dividend for subspace quotient"))
@@ -274,27 +362,88 @@ end
 (/)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a / Subspace([b])
 (/)(a::Subspace{T, 2}, b::UniformScaling) where T = a / Array{T}(I, shape(a))
 
+"""
+$(TYPEDSIGNATURES)
+
+Check whether `a` is a subspace of `b`.
+"""
 (⊆)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = a in b
+
+"""
+$(TYPEDSIGNATURES)
+
+Check whether `b` is a subspace of `a`.
+"""
 (⊇)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = b in a
 
+"""
+$(TYPEDSIGNATURES)
+
+Check whether `a` is orthogonal to `b`.
+"""
 (⟂)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N} = a ⊆ perp(b)
 
 ################
 ### Math
 ################
 
+"""
+$(TYPEDSIGNATURES)
+
+Returns the basis components of `x` in the basis `S.basis`.
+
+See also: [`frombasis`](@ref).
+
+```jldoctest
+julia> S = random_subspace(ComplexF64, 2, 10)
+Subspace{Complex{Float64}} shape (10,) dim 2
+
+julia> x = randn(10);
+
+julia> size(tobasis(S, x))
+(2,)
+
+julia> norm( frombasis(S, tobasis(S, x)) - projection(S, x) ) < 1e-8
+true
+```
+"""
 function tobasis(S::Subspace{<:Number, N}, x::AbstractArray{<:Number, N}) where N
     shp = shape(S)
     basis_mat = reshape(S.basis, prod(shp), dim(S))
     return basis_mat' * vec(x)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Returns a vector from the given basis components in the basis `S.basis`.
+
+See also: [`tobasis`](@ref).
+
+```jldoctest
+julia> S = random_subspace(ComplexF64, 2, 10)
+Subspace{Complex{Float64}} shape (10,) dim 2
+
+julia> x = randn(2);
+
+julia> size(frombasis(S, x))
+(10,)
+
+julia> norm( tobasis(S, frombasis(S, x)) - x ) < 1e-8
+true
+```
+"""
 function frombasis(S::Subspace, x::AbstractArray{<:Number, 1})
     shp = shape(S)
     basis_mat = reshape(S.basis, prod(shp), dim(S))
     return reshape(basis_mat * x, shp)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Projection of vector `x` onto suspace `S`.
+"""
 function projection(S::Subspace{<:Number, N}, x::AbstractArray{<:Number, N}) where N
     return frombasis(S, tobasis(S, x))
 end
@@ -305,6 +454,16 @@ random_element(S::Subspace{T}) where T <: Number = frombasis(S, randn(T, dim(S))
 ### Constructors
 ################
 
+"""
+$(TYPEDSIGNATURES)
+
+Random dimension-`d` subspace of dimension-`dims` vector space, on base field `T`.
+
+```jldoctest
+julia> S = random_subspace(ComplexF64, 2, (3, 4))
+Subspace{Complex{Float64}} shape (3, 4) dim 2
+```
+"""
 function random_subspace(T::Type, d::Int, dims)
     if d < 0
         throw(ArgumentError("subspace dimension was negative: $d"))
@@ -316,6 +475,20 @@ function random_subspace(T::Type, d::Int, dims)
     end
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Random dimension-`d` subspace of `n × n` matrices on base field `T`, satisfying
+`x ∈ S => x' ∈ S`.
+
+```jldoctest
+julia> S = random_hermitian_subspace(ComplexF64, 2, 3)
+Subspace{Complex{Float64}} shape (3, 3) dim 2
+
+julia> S == S'
+true
+'''
+"""
 function random_hermitian_subspace(T::Type, d::Int, n::Int)
     if d < 0
         throw(ArgumentError("subspace dimension was negative: $d"))
@@ -328,8 +501,28 @@ function random_hermitian_subspace(T::Type, d::Int, n::Int)
     end
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Create an empty subspace of dimension-`dims` vector space, on base field `T`.
+
+```jldoctest
+julia> S = empty_subspace(ComplexF64, (3, 4))
+Subspace{Complex{Float64}} shape (3, 4) dim 0
+'''
+"""
 empty_subspace(T::Type, dims::Tuple) = Subspace([zeros(T, dims)])
 
+"""
+$(TYPEDSIGNATURES)
+
+Create an full subspace of dimension-`dims` vector space, on base field `T`.
+
+```jldoctest
+julia> S = empty_subspace(ComplexF64, (3, 4))
+Subspace{Complex{Float64}} shape (3, 4) dim 12
+'''
+"""
 full_subspace(T::Type, dims::Tuple) = perp(empty_subspace(T, dims))
 
 #############

@@ -3,14 +3,14 @@ module Subspaces
 using DocStringExtensions
 
 # FIXME all functions need to propagate tol
-# FIXME rename shape to size
 
 import Base.hcat, Base.vcat, Base.hvcat, Base.cat, Base.+, Base.*, Base.kron, Base.show, Base.iterate, Base.==, Base.in, Base.adjoint
 import Base.|, Base.&, Base.~, Base./, Base.⊆, Base.⊇
+import Base.size
 using LinearAlgebra
 using Convex
 
-export Subspace, shape, dim, each_basis_element
+export Subspace, dim, each_basis_element
 export random_subspace, random_hermitian_subspace, empty_subspace, full_subspace
 export tobasis, frombasis, random_element, projection, perp
 export hermitian_basis
@@ -70,7 +70,7 @@ struct Subspace{T, N}
 end
 
 function show(io::IO, S::Subspace)
-    print(io, "Subspace{$(eltype(S.basis))} shape $(shape(S)) dim $(dim(S))")
+    print(io, "Subspace{$(eltype(S.basis))} size $(size(S)) dim $(dim(S))")
 end
 
 """
@@ -79,11 +79,11 @@ $(TYPEDSIGNATURES)
 Returns the size of the elements of a subspace.
 
 ```jldoctest
-julia> shape(Subspace([ [1,2,3], [4,5,6] ]))
+julia> size(Subspace([ [1,2,3], [4,5,6] ]))
 (3,)
 ```
 """
-shape(S::Subspace)::Tuple{Vararg{<:Integer}} = size(S.basis)[1:end-1]
+size(S::Subspace)::Tuple{Vararg{<:Integer}} = size(S.basis)[1:end-1]
 
 """
 $(TYPEDSIGNATURES)
@@ -104,10 +104,10 @@ Returns the orthogonal subspace.  Can also be written as `~S`.
 
 ```jldoctest
 julia> S = Subspace([ [1,2,3], [4,5,6] ])
-Subspace{Float64} shape (3,) dim 2
+Subspace{Float64} size (3,) dim 2
 
 julia> perp(S)
-Subspace{Float64} shape (3,) dim 1
+Subspace{Float64} size (3,) dim 1
 
 julia> perp(S) == ~S
 true
@@ -142,7 +142,7 @@ each_basis_element(arr::AbstractArray) = [arr]
 
 function each_basis_element_or_zero(S::Subspace{T, N}) where {T, N}
     if dim(S) == 0
-        return [ zeros(T, shape(S)) ]
+        return [ zeros(T, size(S)) ]
     else
         return each_basis_element(S)
     end
@@ -158,15 +158,15 @@ end
 Linear span of two subspaces, or of a subspace an and array.  Equivalent to |(a, b).
 """
 function +(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
-    if shape(a) != shape(b)
-        throw(DimensionMismatch("Array shape mismatch: $(shape(a)) vs $(shape(b))"))
+    if size(a) != size(b)
+        throw(DimensionMismatch("Array size mismatch: $(size(a)) vs $(size(b))"))
     end
     return Subspace(cat(a.basis, b.basis; dims=N+1))
 end
 
 (+)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a + Subspace([b])
 (+)(a::AbstractArray{T, N}, b::Subspace{U, N}) where {T,U,N} = Subspace([a]) + b
-(+)(S::Subspace{T, 2}, x::UniformScaling) where T = S + Subspace([ Array{T}(I, shape(S)) ])
+(+)(S::Subspace{T, 2}, x::UniformScaling) where T = S + Subspace([ Array{T}(I, size(S)) ])
 (+)(x::UniformScaling, S::Subspace{T, 2}) where T = S + I
 
 """
@@ -193,7 +193,7 @@ Linear span of products of elements of space `a` with elements of space `b`.
 """
 function *(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
     #if dim(a) == 0 || dim(b) == 0
-    #    return Subspace([ zeros(T, shape(a)) * zeros(U, shape(b)) ])
+    #    return Subspace([ zeros(T, size(a)) * zeros(U, size(b)) ])
     #else
         return Subspace([ x*y for x in each_basis_element_or_zero(a) for y in each_basis_element_or_zero(b) ])
     #end
@@ -242,7 +242,7 @@ function cat(S::Subspace...; dims)
     # FIXME doesn't work well with heterogenous types
     #T = promote_type(map((x)->eltype(x.basis), [S...])...)
     Subspace([
-        cat([ i==j ? x : zeros(shape(S[i])) for i in 1:n ]...; dims=dims)
+        cat([ i==j ? x : zeros(size(S[i])) for i in 1:n ]...; dims=dims)
         for j in 1:n
         for x in each_basis_element_or_zero(S[j])
     ])
@@ -258,11 +258,11 @@ function hvcat(rows::Tuple{Vararg{Int}}, S::Subspace{T, N}...) where {T, N}
     basis = Array{Array{T, N}, 1}()
     for j in 1:n
         for x in each_basis_element_or_zero(S[j])
-            push!(basis, hvcat(rows, [ i==j ? x : zeros(T, shape(S[i])) for i in 1:n ]...))
+            push!(basis, hvcat(rows, [ i==j ? x : zeros(T, size(S[i])) for i in 1:n ]...))
         end
     end
     if isempty(basis)
-        push!(basis, hvcat(rows, [ zeros(T, shape(S[i])) for i in 1:n ]...))
+        push!(basis, hvcat(rows, [ zeros(T, size(S[i])) for i in 1:n ]...))
     end
     return Subspace(basis)
 end
@@ -285,7 +285,7 @@ function in(x::AbstractArray{<:Number, N}, S::Subspace{<:Number, N}) where N
 end
 
 function in(x::UniformScaling, S::Subspace{T, 2}) where T
-    return Matrix{T}(I, shape(S)) in S
+    return Matrix{T}(I, size(S)) in S
 end
 
 """
@@ -294,7 +294,7 @@ $(TYPEDSIGNATURES)
 Check whether `a` is a subspace of `b`.
 """
 function in(a::Subspace{<:Number, N}, b::Subspace{<:Number, N}) where N
-    shp = shape(a)
+    shp = size(a)
     if dim(a) > dim(b)
         return false
     end
@@ -335,16 +335,16 @@ Quotient of vector subspaces.  Throws error unless `b ⊆ a`.
 
 ```jldoctest
 julia> a = random_subspace(ComplexF64, 2, 10)
-Subspace{Complex{Float64}} shape (10,) dim 2
+Subspace{Complex{Float64}} size (10,) dim 2
 
 julia> b = random_subspace(ComplexF64, 3, 10)
-Subspace{Complex{Float64}} shape (10,) dim 3
+Subspace{Complex{Float64}} size (10,) dim 3
 
 julia> a / b
 ERROR: ArgumentError: divisor must be a subspace of dividend for subspace quotient
 
 julia> (a+b) / a
-Subspace{Complex{Float64}} shape (10,) dim 3
+Subspace{Complex{Float64}} size (10,) dim 3
 
 julia> (a+b) / a == Subspace([ projection(~a, x) for x in each_basis_element(b) ])
 true
@@ -362,7 +362,7 @@ function (/)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
 end
 
 (/)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a / Subspace([b])
-(/)(a::Subspace{T, 2}, b::UniformScaling) where T = a / Array{T}(I, shape(a))
+(/)(a::Subspace{T, 2}, b::UniformScaling) where T = a / Array{T}(I, size(a))
 
 """
 $(TYPEDSIGNATURES)
@@ -398,7 +398,7 @@ See also: [`frombasis`](@ref).
 
 ```jldoctest
 julia> S = random_subspace(ComplexF64, 2, 10)
-Subspace{Complex{Float64}} shape (10,) dim 2
+Subspace{Complex{Float64}} size (10,) dim 2
 
 julia> x = randn(10);
 
@@ -410,7 +410,7 @@ true
 ```
 """
 function tobasis(S::Subspace{<:Number, N}, x::AbstractArray{<:Number, N}) where N
-    shp = shape(S)
+    shp = size(S)
     basis_mat = reshape(S.basis, prod(shp), dim(S))
     return basis_mat' * vec(x)
 end
@@ -424,7 +424,7 @@ See also: [`tobasis`](@ref).
 
 ```jldoctest
 julia> S = random_subspace(ComplexF64, 2, 10)
-Subspace{Complex{Float64}} shape (10,) dim 2
+Subspace{Complex{Float64}} size (10,) dim 2
 
 julia> x = randn(2);
 
@@ -436,7 +436,7 @@ true
 ```
 """
 function frombasis(S::Subspace, x::AbstractArray{<:Number, 1})
-    shp = shape(S)
+    shp = size(S)
     basis_mat = reshape(S.basis, prod(shp), dim(S))
     return reshape(basis_mat * x, shp)
 end
@@ -464,20 +464,20 @@ random_element(S::Subspace{T}) where T <: Number = frombasis(S, randn(T, dim(S))
 """
 $(TYPEDSIGNATURES)
 
-Random dimension-`d` subspace of dimension-`dims` vector space, on base field `T`.
+Random dimension-`d` subspace of dimension-`siz` vector space, on base field `T`.
 
 ```jldoctest
 julia> S = random_subspace(ComplexF64, 2, (3, 4))
-Subspace{Complex{Float64}} shape (3, 4) dim 2
+Subspace{Complex{Float64}} size (3, 4) dim 2
 ```
 """
-function random_subspace(T::Type, d::Int, dims)
+function random_subspace(T::Type, d::Int, siz)
     if d < 0
         throw(ArgumentError("subspace dimension was negative: $d"))
     elseif d == 0
-        return empty_subspace(dims)
+        return empty_subspace(siz)
     else
-        b = [ randn(T, dims) for i in 1:d ]
+        b = [ randn(T, siz) for i in 1:d ]
         return Subspace(b)
     end
 end
@@ -490,7 +490,7 @@ Random dimension-`d` subspace of `n × n` matrices on base field `T`, satisfying
 
 ```jldoctest
 julia> S = random_hermitian_subspace(ComplexF64, 2, 3)
-Subspace{Complex{Float64}} shape (3, 3) dim 2
+Subspace{Complex{Float64}} size (3, 3) dim 2
 
 julia> S == S'
 true
@@ -511,26 +511,26 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Create an empty subspace of dimension-`dims` vector space, on base field `T`.
+Create an empty subspace of dimension-`siz` vector space, on base field `T`.
 
 ```jldoctest
 julia> S = empty_subspace(ComplexF64, (3, 4))
-Subspace{Complex{Float64}} shape (3, 4) dim 0
+Subspace{Complex{Float64}} size (3, 4) dim 0
 ```
 """
-empty_subspace(T::Type, dims::Tuple) = Subspace([zeros(T, dims)])
+empty_subspace(T::Type, siz::Tuple) = Subspace([zeros(T, siz)])
 
 """
 $(TYPEDSIGNATURES)
 
-Create an full subspace of dimension-`dims` vector space, on base field `T`.
+Create an full subspace of dimension-`siz` vector space, on base field `T`.
 
 ```jldoctest
 julia> S = full_subspace(ComplexF64, (3, 4))
-Subspace{Complex{Float64}} shape (3, 4) dim 12
+Subspace{Complex{Float64}} size (3, 4) dim 12
 ```
 """
-full_subspace(T::Type, dims::Tuple) = perp(empty_subspace(T, dims))
+full_subspace(T::Type, siz::Tuple) = perp(empty_subspace(T, siz))
 
 #############
 ### Hermitian
@@ -574,8 +574,8 @@ function hermitian_basis(S::Subspace{Complex{T}})::Array{Hermitian{Complex{T},Ar
     if dim(S) == 0
         return []
     end
-    n = shape(S)[1]
-    shape(S)[2] == n || throw(ArgumentError("subspace shape was not square: $(shape(S))"))
+    n = size(S)[1]
+    size(S)[2] == n || throw(ArgumentError("subspace size was not square: $(size(S))"))
     M = hcat(
         [ hermit_to_vec( x     + x'     ) for x in each_basis_element(S) ]...,
         [ hermit_to_vec((x*1im)+(x*1im)') for x in each_basis_element(S) ]...
@@ -595,7 +595,7 @@ $(TYPEDSIGNATURES)
 Returns the basis components of `x` in the basis `S.basis`.
 """
 function tobasis(S::Subspace{<:Number, N}, x::Convex.AbstractExpr) where N
-    shp = shape(S)
+    shp = size(S)
     basis_mat = reshape(S.basis, prod(shp), dim(S))
     return basis_mat' * vec(x)
 end
@@ -606,7 +606,7 @@ $(TYPEDSIGNATURES)
 Returns a vector from the given basis components in the basis `S.basis`.
 """
 function frombasis(S::Subspace{<:Number, 1}, x::Convex.AbstractExpr)
-    shp = shape(S)
+    shp = size(S)
     basis_mat = reshape(S.basis, prod(shp), dim(S))
     return basis_mat * x
 end
@@ -617,7 +617,7 @@ $(TYPEDSIGNATURES)
 Returns a vector from the given basis components in the basis `S.basis`.
 """
 function frombasis(S::Subspace{<:Number, 2}, x::Convex.AbstractExpr)
-    shp = shape(S)
+    shp = size(S)
     basis_mat = reshape(S.basis, prod(shp), dim(S))
     return reshape(basis_mat * x, shp...)
 end

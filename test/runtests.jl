@@ -46,18 +46,18 @@ eye(n) = Matrix(1.0*I, (n,n))
     @test projection(c, x) ≈ x
     @test frombasis(c, tobasis(c, x)) ≈ x
     @test dim(kron(b, c)) == 6
-    @test shape(kron(b, c)) == (100,)
+    @test size(kron(b, c)) == (100,)
     @test dim(hcat(b, c)) == 5
-    @test shape(hcat(b, c)) == (10, 2)
+    @test size(hcat(b, c)) == (10, 2)
     @test dim(vcat(b, c)) == 5
-    @test shape(vcat(b, c)) == (20,)
-    @test shape(b') == (1, 10)
-    @test shape(b'') == (10, 1)
+    @test size(vcat(b, c)) == (20,)
+    @test size(b') == (1, 10)
+    @test size(b'') == (10, 1)
     @test dim(b + ones(10)) == 3
     @test dim(empty_subspace(Float64, (10,))) == 0
     @test dim(full_subspace(Float64, (10,))) == 10
     @test dim(full_subspace(Float64, (3, 4))) == 12
-    @test shape(full_subspace(Float64, (3, 4))) == (3, 4)
+    @test size(full_subspace(Float64, (3, 4))) == (3, 4)
     @test dim(full_subspace(Float64, (4, 4)) / I) == 15
 end
 
@@ -69,16 +69,16 @@ end
     @test dim(~a) == 12
     @test dim(f) == 12
     @test dim(~f) == 0
-    @test shape(a') == (4,3)
-    @test shape(a+a) == (3,4)
-    @test shape(a*b) == (3,5)
-    @test shape(a&a) == (3,4)
-    @test shape(vcat(a)) == (3,4)
-    @test shape(vcat(a,a)) == (6,4)
-    @test shape(hcat(a)) == (3,4)
-    @test shape(hcat(a,a)) == (3,8)
-    @test shape(kron(a,b)) == (12,20)
-    @test shape(a/a) == (3,4)
+    @test size(a') == (4,3)
+    @test size(a+a) == (3,4)
+    @test size(a*b) == (3,5)
+    @test size(a&a) == (3,4)
+    @test size(vcat(a)) == (3,4)
+    @test size(vcat(a,a)) == (6,4)
+    @test size(hcat(a)) == (3,4)
+    @test size(hcat(a,a)) == (3,8)
+    @test size(kron(a,b)) == (12,20)
+    @test size(a/a) == (3,4)
     @test dim(a/a) == 0
     @test dim(f/a) == 12
     @test dim(f/f) == 0

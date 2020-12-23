@@ -6,7 +6,7 @@ using DocStringExtensions
 # FIXME rename shape to size
 
 import Base.hcat, Base.vcat, Base.hvcat, Base.cat, Base.+, Base.*, Base.kron, Base.show, Base.iterate, Base.==, Base.in, Base.adjoint
-import Base.|, Base.&, Base.~, Base./, Base.⊆
+import Base.|, Base.&, Base.~, Base./, Base.⊆, Base.⊇
 using LinearAlgebra
 using Convex
 
@@ -118,6 +118,8 @@ true
 """
 perp(S::Subspace)::Subspace = Subspace(S.perp)
 
+# FIXME use const alias functions
+# (search `const alias` in https://docs.julialang.org/en/v1/manual/documentation/)
 """
 $(TYPEDSIGNATURES)
 
@@ -448,6 +450,11 @@ function projection(S::Subspace{<:Number, N}, x::AbstractArray{<:Number, N}) whe
     return frombasis(S, tobasis(S, x))
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Returns a random element of a subspace.
+"""
 random_element(S::Subspace{T}) where T <: Number = frombasis(S, randn(T, dim(S)))
 
 ################
@@ -487,7 +494,7 @@ Subspace{Complex{Float64}} shape (3, 3) dim 2
 
 julia> S == S'
 true
-'''
+```
 """
 function random_hermitian_subspace(T::Type, d::Int, n::Int)
     if d < 0
@@ -509,7 +516,7 @@ Create an empty subspace of dimension-`dims` vector space, on base field `T`.
 ```jldoctest
 julia> S = empty_subspace(ComplexF64, (3, 4))
 Subspace{Complex{Float64}} shape (3, 4) dim 0
-'''
+```
 """
 empty_subspace(T::Type, dims::Tuple) = Subspace([zeros(T, dims)])
 
@@ -519,9 +526,9 @@ $(TYPEDSIGNATURES)
 Create an full subspace of dimension-`dims` vector space, on base field `T`.
 
 ```jldoctest
-julia> S = empty_subspace(ComplexF64, (3, 4))
+julia> S = full_subspace(ComplexF64, (3, 4))
 Subspace{Complex{Float64}} shape (3, 4) dim 12
-'''
+```
 """
 full_subspace(T::Type, dims::Tuple) = perp(empty_subspace(T, dims))
 
@@ -558,6 +565,11 @@ function vec_to_hermit(v::AbstractArray{T, 1}, n::Integer) where T
     return Hermitian(M)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Given a subspace satisfying `S == S'`, returns a basis in which each basis element is Hermitian.
+"""
 function hermitian_basis(S::Subspace{Complex{T}})::Array{Hermitian{Complex{T},Array{Complex{T},2}},1} where T
     if dim(S) == 0
         return []
@@ -577,37 +589,72 @@ end
 ### Support for Convex.jl
 #########################
 
+"""
+$(TYPEDSIGNATURES)
+
+Returns the basis components of `x` in the basis `S.basis`.
+"""
 function tobasis(S::Subspace{<:Number, N}, x::Convex.AbstractExpr) where N
     shp = shape(S)
     basis_mat = reshape(S.basis, prod(shp), dim(S))
     return basis_mat' * vec(x)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Returns a vector from the given basis components in the basis `S.basis`.
+"""
 function frombasis(S::Subspace{<:Number, 1}, x::Convex.AbstractExpr)
     shp = shape(S)
     basis_mat = reshape(S.basis, prod(shp), dim(S))
     return basis_mat * x
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Returns a vector from the given basis components in the basis `S.basis`.
+"""
 function frombasis(S::Subspace{<:Number, 2}, x::Convex.AbstractExpr)
     shp = shape(S)
     basis_mat = reshape(S.basis, prod(shp), dim(S))
     return reshape(basis_mat * x, shp...)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Projection of vector `x` onto suspace `S`.
+"""
 function projection(S::Subspace{<:Number, N}, x::Convex.AbstractExpr) where N
     return frombasis(S, tobasis(S, x))
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Constrains the variable `x` to be in the subspace `S`.
+"""
 function in(x::Convex.AbstractExpr, S::Subspace{<:Number, N}) where N
     return tobasis(perp(S), x) == 0
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Creates a `Convex.jl` variable ranging over the given subspace.
+"""
 function variable_in_space(S::Subspace{<:Complex{<:Real}, N}) where N
     x = Convex.ComplexVariable(dim(S))
     return frombasis(S, x)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Creates a `Convex.jl` variable ranging over the given subspace.
+"""
 function variable_in_space(S::Subspace{<:Real, N}) where N
     x = Convex.Variable(dim(S))
     return frombasis(S, x)

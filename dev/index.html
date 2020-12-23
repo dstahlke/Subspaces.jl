@@ -10,11 +10,23 @@ true
 julia&gt; [1,1,2] ∈ S
 false
 
+julia&gt; S.basis
+3×2 Array{Float64,2}:
+  0.0       1.0
+ -0.707107  0.0
+ -0.707107  0.0
+
 julia&gt; S | Subspace([ [0,0,1] ])
 Subspace{Float64} size (3,) dim 3
 
 julia&gt; S &amp; Subspace([ [1,1,1] ])
 Subspace{Float64} size (3,) dim 1
 
-julia&gt; Subspace([ [1 0; 0 1] ])
-Subspace{Float64} size (2, 2) dim 1</code></pre></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="usage/">Usage »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 23 December 2020 21:11">Wednesday 23 December 2020</span>. Using Julia version 1.5.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+julia&gt; kron(S, S)
+Subspace{Float64} size (9,) dim 4
+
+julia&gt; S * S&#39;
+Subspace{Float64} size (3, 3) dim 4
+
+julia&gt; Subspace([ ones(3,4,5) ])
+Subspace{Float64} size (3, 4, 5) dim 1</code></pre></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="usage/">Usage »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 23 December 2020 21:35">Wednesday 23 December 2020</span>. Using Julia version 1.5.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

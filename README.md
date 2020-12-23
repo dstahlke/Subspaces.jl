@@ -8,7 +8,7 @@ supported.
 
 ## Example
 
-```
+```julia
 julia> using Subspaces
 
 julia> S = Subspace([ [1,0,0], [0,1,1] ])

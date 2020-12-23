@@ -2,8 +2,6 @@ module Subspaces
 
 using DocStringExtensions
 
-# FIXME all functions need to propagate tol
-
 import Base.hcat, Base.vcat, Base.hvcat, Base.cat, Base.+, Base.*, Base.kron, Base.show, Base.iterate, Base.==, Base.in, Base.adjoint
 import Base.|, Base.&, Base.~, Base./, Base.⊆, Base.⊇
 import Base.size
@@ -116,10 +114,8 @@ julia> perp(S) ⟂ S
 true
 ```
 """
-perp(S::Subspace)::Subspace = Subspace(S.perp)
+perp(S::Subspace)::Subspace = Subspace(S.perp, tol=S.tol)
 
-# FIXME use const alias functions
-# (search `const alias` in https://docs.julialang.org/en/v1/manual/documentation/)
 """
 $(TYPEDSIGNATURES)
 
@@ -161,12 +157,12 @@ function +(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
     if size(a) != size(b)
         throw(DimensionMismatch("Array size mismatch: $(size(a)) vs $(size(b))"))
     end
-    return Subspace(cat(a.basis, b.basis; dims=N+1))
+    return Subspace(cat(a.basis, b.basis; dims=N+1), tol=max(a.tol, b.tol))
 end
 
-(+)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a + Subspace([b])
-(+)(a::AbstractArray{T, N}, b::Subspace{U, N}) where {T,U,N} = Subspace([a]) + b
-(+)(S::Subspace{T, 2}, x::UniformScaling) where T = S + Subspace([ Array{T}(I, size(S)) ])
+(+)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a + Subspace([b], tol=a.tol)
+(+)(a::AbstractArray{T, N}, b::Subspace{U, N}) where {T,U,N} = Subspace([a], tol=b.tol) + b
+(+)(S::Subspace{T, 2}, x::UniformScaling) where T = S + Subspace([ Array{T}(I, size(S)) ], tol=S.tol)
 (+)(x::UniformScaling, S::Subspace{T, 2}) where T = S + I
 
 """
@@ -193,14 +189,14 @@ Linear span of products of elements of space `a` with elements of space `b`.
 """
 function *(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
     #if dim(a) == 0 || dim(b) == 0
-    #    return Subspace([ zeros(T, size(a)) * zeros(U, size(b)) ])
+    #    return Subspace([ zeros(T, size(a)) * zeros(U, size(b)) ], tol=max(a.tol, b.tol))
     #else
-        return Subspace([ x*y for x in each_basis_element_or_zero(a) for y in each_basis_element_or_zero(b) ])
+        return Subspace([ x*y for x in each_basis_element_or_zero(a) for y in each_basis_element_or_zero(b) ], tol=max(a.tol, b.tol))
     #end
 end
 
-(*)(a::Subspace, b::AbstractArray) = a * Subspace([b])
-(*)(a::AbstractArray, b::Subspace) = Subspace([a]) * b
+(*)(a::Subspace, b::AbstractArray) = a * Subspace([b], tol=a.tol)
+(*)(a::AbstractArray, b::Subspace) = Subspace([a], tol=b.tol) * b
 
 """
 $(TYPEDSIGNATURES)
@@ -212,11 +208,11 @@ function kron(a::Subspace{T,N}, b::Subspace{U,N}) where {T,U,N}
         kron(x, y)
         for x in each_basis_element_or_zero(a)
         for y in each_basis_element_or_zero(b)
-    ])
+    ], tol=max(a.tol, b.tol))
 end
 
-kron(a::Subspace, b::AbstractArray) = kron(a, Subspace([b]))
-kron(a::AbstractArray, b::Subspace) = kron(Subspace([a]), b)
+kron(a::Subspace, b::AbstractArray) = kron(a, Subspace([b], tol=a.tol))
+kron(a::AbstractArray, b::Subspace) = kron(Subspace([a], tol=b.tol), b)
 
 """
 $(TYPEDSIGNATURES)
@@ -245,7 +241,7 @@ function cat(S::Subspace...; dims)
         cat([ i==j ? x : zeros(size(S[i])) for i in 1:n ]...; dims=dims)
         for j in 1:n
         for x in each_basis_element_or_zero(S[j])
-    ])
+    ], tol=maximum([ s.tol for s in S ]))
 end
 
 """
@@ -264,7 +260,7 @@ function hvcat(rows::Tuple{Vararg{Int}}, S::Subspace{T, N}...) where {T, N}
     if isempty(basis)
         push!(basis, hvcat(rows, [ zeros(T, size(S[i])) for i in 1:n ]...))
     end
-    return Subspace(basis)
+    return Subspace(basis, tol=maximum([ s.tol for s in S ]))
 end
 
 """
@@ -273,7 +269,7 @@ $(TYPEDSIGNATURES)
 Adjoint of vector subspace (linear span of adjoints of members of a space).
 """
 adjoint(S::Subspace) =
-    Subspace([ x' for x in each_basis_element_or_zero(S) ])
+    Subspace([ x' for x in each_basis_element_or_zero(S) ], tol=S.tol)
 
 """
 $(TYPEDSIGNATURES)
@@ -361,7 +357,7 @@ function (/)(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
     return perp(perp(a) + b)
 end
 
-(/)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a / Subspace([b])
+(/)(a::Subspace{T, N}, b::AbstractArray{U, N}) where {T,U,N} = a / Subspace([b], tol=a.tol)
 (/)(a::Subspace{T, 2}, b::UniformScaling) where T = a / Array{T}(I, size(a))
 
 """
@@ -471,14 +467,14 @@ julia> S = random_subspace(ComplexF64, 2, (3, 4))
 Subspace{Complex{Float64}} size (3, 4) dim 2
 ```
 """
-function random_subspace(T::Type, d::Int, siz)
+function random_subspace(T::Type, d::Int, siz, tol=default_tol)
     if d < 0
         throw(ArgumentError("subspace dimension was negative: $d"))
     elseif d == 0
         return empty_subspace(siz)
     else
         b = [ randn(T, siz) for i in 1:d ]
-        return Subspace(b)
+        return Subspace(b, tol=tol)
     end
 end
 
@@ -496,7 +492,7 @@ julia> S == S'
 true
 ```
 """
-function random_hermitian_subspace(T::Type, d::Int, n::Int)
+function random_hermitian_subspace(T::Type, d::Int, n::Int, tol=default_tol)
     if d < 0
         throw(ArgumentError("subspace dimension was negative: $d"))
     elseif d == 0
@@ -504,7 +500,7 @@ function random_hermitian_subspace(T::Type, d::Int, n::Int)
     else
         b = [ randn(T, n, n) for i in 1:d ]
         b = [ x + x' for x in b ]
-        return Subspace(b)
+        return Subspace(b, tol=tol)
     end
 end
 
@@ -518,7 +514,7 @@ julia> S = empty_subspace(ComplexF64, (3, 4))
 Subspace{Complex{Float64}} size (3, 4) dim 0
 ```
 """
-empty_subspace(T::Type, siz::Tuple) = Subspace([zeros(T, siz)])
+empty_subspace(T::Type, siz::Tuple, tol=default_tol) = Subspace([zeros(T, siz)], tol=tol)
 
 """
 $(TYPEDSIGNATURES)
@@ -581,7 +577,7 @@ function hermitian_basis(S::Subspace{Complex{T}})::Array{Hermitian{Complex{T},Ar
         [ hermit_to_vec((x*1im)+(x*1im)') for x in each_basis_element(S) ]...
     )
     hb = [ vec_to_hermit(x, n) for x in each_basis_element(Subspace(M)) ]
-    @assert (Subspace(hb) == S) "Hermitian basis didn't equal original space"
+    @assert (Subspace(hb, tol=S.tol) == S) "Hermitian basis didn't equal original space"
     return hb
 end
 

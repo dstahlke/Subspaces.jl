@@ -1,3 +1,8 @@
 [deps]
+Convex = "f65535da-76fb-5f13-bab9-19810c17039a"
+DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+RandomMatrices = "2576dda1-a324-5b11-aa66-c48ed7e3c618"
 SCS = "c946c3f1-0d1f-5ce8-9dea-7daa1f7e2d13"

@@ -27,6 +27,8 @@ eye(n) = Matrix(1.0*I, (n,n))
     @test dim(a+b) == 3
     @test dim(a+c) == 4
     @test dim(b+c) == 5
+    @test dim(b*c') == 6
+    @test size(b*c') == (10, 10)
     @test dim(a+b+c) == 6
     @test dim((a+b) + (b+c)) == 6
     @test (a+b) + (b+c) == a+b+c
@@ -87,6 +89,3 @@ end
     @test zeros((3,4)) in a
     @test !(ones((3,4)) in a)
 end
-
-# FIXME test matrix * vector
-# FIXME test operations on empty spaces

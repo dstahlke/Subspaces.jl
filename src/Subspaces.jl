@@ -51,13 +51,25 @@ struct Subspace{T, N}
         shape = size(basis)[1:end-1]
         d = size(basis)[end]
         mat = reshape(basis, prod(shape), d)
-        s = svd(mat; full=true)
-        lastgood = findlast(s.S .>= tol)
-        if typeof(lastgood) == Nothing
-            lastgood = 0
+        if false
+            q = qr(mat, Val(true))
+            take = [norm(x) >= tol for x in eachrow(q.R)]
+            # FIXME this changes the size of the Q matrix, but if we don't convert to Array then it's slow
+            qQ = Array(q.Q)
+            resize!(take, size(qQ)[2])
+            good = qQ[:,take]
+            perp = qQ[:,.!take]
+        else
+            s = svd(mat; full=true)
+            lastgood = findlast(s.S .>= tol)
+            if typeof(lastgood) == Nothing
+                lastgood = 0
+            end
+            good = s.U[:,1:lastgood]
+            perp = s.U[:,lastgood+1:end]
         end
-        good = reshape(s.U[:,1:lastgood], shape..., lastgood)
-        perp = reshape(s.U[:,lastgood+1:end], shape..., prod(shape)-lastgood)
+        good = reshape(good, shape..., size(good)[2])
+        perp = reshape(perp, shape..., size(perp)[2])
         return new{eltype(good), length(shape)}(good, perp, tol)
     end
 
@@ -187,7 +199,7 @@ Linear span of two subspaces, or of a subspace an and array.  Equivalent to |(a,
 
 Linear span of products of elements of space `a` with elements of space `b`.
 """
-function *(a::Subspace{T, N}, b::Subspace{U, N}) where {T,U,N}
+function *(a::Subspace, b::Subspace)
     #if dim(a) == 0 || dim(b) == 0
     #    return Subspace([ zeros(T, size(a)) * zeros(U, size(b)) ], tol=max(a.tol, b.tol))
     #else

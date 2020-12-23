@@ -14,3 +14,8 @@ makedocs(
         "Reference" => "reference.md",
     ],
 )
+
+deploydocs(
+    repo = "github.com/dstahlke/Subspaces.jl.git",
+    branch = "gh-pages",
+)

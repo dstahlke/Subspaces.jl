@@ -17,5 +17,6 @@ makedocs(
 
 deploydocs(
     repo = "github.com/dstahlke/Subspaces.jl.git",
+    devbranch = "main",
     branch = "gh-pages",
 )

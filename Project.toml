@@ -1,7 +1,7 @@
 name = "Subspaces"
 uuid = "922a6ab9-c04b-46bc-b8bf-400344129a3c"
 authors = ["Dan Stahlke <dan@stahlke.org>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"

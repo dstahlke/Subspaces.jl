@@ -51,11 +51,13 @@ struct Subspace{T, N}
         shape = size(basis)[1:end-1]
         d = size(basis)[end]
         mat = reshape(basis, prod(shape), d)
-        if false
+        if true
             q = qr(mat, Val(true))
             take = [norm(x) >= tol for x in eachrow(q.R)]
-            # FIXME this changes the size of the Q matrix, but if we don't convert to Array then it's slow
-            qQ = Array(q.Q)
+            # This is the most efficient way to get the Q matrix.
+            # Multiply by I is slow: https://github.com/JuliaLang/julia/issues/38972
+            # Cast to Array changes size: https://github.com/JuliaLang/julia/issues/37102
+            qQ = q.Q * Matrix(1.0*I, (size(q.Q)[2], size(q.Q)[2]))
             resize!(take, size(qQ)[2])
             good = qQ[:,take]
             perp = qQ[:,.!take]

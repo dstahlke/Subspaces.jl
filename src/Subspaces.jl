@@ -7,6 +7,7 @@ import Base.|, Base.&, Base.~, Base./, Base.⊆, Base.⊇
 import Base.size
 using LinearAlgebra
 using Convex
+using Compat
 
 export Subspace, dim, each_basis_element
 export random_subspace, random_hermitian_subspace, empty_subspace, full_subspace
@@ -53,7 +54,7 @@ struct Subspace{T, N}
         mat = reshape(basis, prod(shape), d)
         if true
             q = qr(mat, Val(true))
-            take = [norm(x) >= tol for x in eachrow(q.R)]
+            @compat take = [norm(x) >= tol for x in eachrow(q.R)]
             # This is the most efficient way to get the Q matrix.
             # Multiply by I is slow: https://github.com/JuliaLang/julia/issues/38972
             # Cast to Array changes size: https://github.com/JuliaLang/julia/issues/37102
@@ -77,7 +78,7 @@ struct Subspace{T, N}
 
     function Subspace(basis::AbstractArray{<:AbstractArray{<:Number}, 1}; tol::Real=default_tol)
         shape = size(basis[1])
-        return Subspace(cat(basis...; dims=length(shape)+1); tol)
+        return Subspace(cat(basis...; dims=length(shape)+1); tol=tol)
     end
 end
 

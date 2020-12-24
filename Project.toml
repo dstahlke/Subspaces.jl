@@ -4,6 +4,7 @@ authors = ["Dan Stahlke <dan@stahlke.org>"]
 version = "0.1.0"
 
 [deps]
+Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 Convex = "f65535da-76fb-5f13-bab9-19810c17039a"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -12,7 +13,8 @@ RandomMatrices = "2576dda1-a324-5b11-aa66-c48ed7e3c618"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
+Compat = "^3"
 Convex = "^0.13"
 DocStringExtensions = "^0.8"
 RandomMatrices = "^0.5"
-julia = "^1.5"
+julia = "^1.0"

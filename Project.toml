@@ -14,5 +14,5 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 [compat]
 Convex = "^0.13"
 DocStringExtensions = "^0.8"
-LinearAlgebra = "^0.5"
+RandomMatrices = "^0.5"
 julia = "^1.5"

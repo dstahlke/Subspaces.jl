@@ -486,7 +486,7 @@ function random_subspace(T::Type, d::Int, siz, tol=default_tol)
     if d < 0
         throw(ArgumentError("subspace dimension was negative: $d"))
     elseif d == 0
-        return empty_subspace(siz)
+        return empty_subspace(T, siz, tol)
     else
         b = [ randn(T, siz) for i in 1:d ]
         return Subspace(b, tol=tol)
@@ -511,7 +511,7 @@ function random_hermitian_subspace(T::Type, d::Int, n::Int, tol=default_tol)
     if d < 0
         throw(ArgumentError("subspace dimension was negative: $d"))
     elseif d == 0
-        return empty_subspace((n, n))
+        return empty_subspace(T, (n, n), tol)
     else
         b = [ randn(T, n, n) for i in 1:d ]
         b = [ x + x' for x in b ]

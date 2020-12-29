@@ -77,4 +77,5 @@ end
     @test a ⊆ f
     @test zeros((3,4)) in a
     @test !(ones((3,4)) in a)
+    @test dim(random_subspace(ComplexF64, 0, (3,3))) == 0
 end

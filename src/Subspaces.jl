@@ -53,7 +53,11 @@ struct Subspace{T, N}
         d = size(basis)[end]
         mat = reshape(basis, prod(shape), d)
         if true
-            q = qr(mat, Val(true))
+            if isdefined(LinearAlgebra, :ColumnNorm)
+                q = qr(mat, ColumnNorm())
+            else
+                q = qr(mat, Val(true))
+            end
             @compat take = [norm(x) >= tol for x in eachrow(q.R)]
             # This is the most efficient way to get the Q matrix.
             # Multiply by I is slow: https://github.com/JuliaLang/julia/issues/38972
@@ -96,7 +100,7 @@ julia> size(Subspace([ [1,2,3], [4,5,6] ]))
 (3,)
 ```
 """
-size(S::Subspace)::Tuple{Vararg{<:Integer}} = size(S.basis)[1:end-1]
+size(S::Subspace) = size(S.basis)[1:end-1]
 
 """
 $(TYPEDSIGNATURES)

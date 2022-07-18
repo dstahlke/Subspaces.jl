@@ -13,3 +13,6 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 julia = "^1.6"
+Compat = "^2, ^3"
+Convex = "^0.13, 0.14, 0.15"
+DocStringExtensions = "^0.8, 0.9"
